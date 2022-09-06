@@ -1,0 +1,1421 @@
+[
+    {
+        "id": "d3517f1c.2c76b",
+        "type": "tab",
+        "label": "Feinstaub",
+        "disabled": false,
+        "info": ""
+    },
+    {
+        "id": "9e0450e.08f5db",
+        "type": "tab",
+        "label": "MQTT to Influx",
+        "disabled": false,
+        "info": ""
+    },
+    {
+        "id": "2ee36d67.e60452",
+        "type": "tab",
+        "label": "Water to influx",
+        "disabled": false,
+        "info": ""
+    },
+    {
+        "id": "a74590ad.2ff13",
+        "type": "tab",
+        "label": "Homematic to Influx",
+        "disabled": false,
+        "info": ""
+    },
+    {
+        "id": "5088004e.29a93",
+        "type": "tab",
+        "label": "Emonhub to Influx",
+        "disabled": false,
+        "info": ""
+    },
+    {
+        "id": "15524c6f.7f30d4",
+        "type": "tab",
+        "label": "Environment to Influx",
+        "disabled": false,
+        "info": ""
+    },
+    {
+        "id": "ba6738e5872559e0",
+        "type": "tab",
+        "label": "Oilprice",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "33c7c8f6.431648",
+        "type": "mqtt-broker",
+        "name": "",
+        "broker": "emqx",
+        "port": "1883",
+        "clientid": "",
+        "usetls": false,
+        "compatmode": true,
+        "keepalive": "15",
+        "cleansession": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthPayload": "",
+        "closeTopic": "",
+        "closePayload": "",
+        "willTopic": "",
+        "willQos": "0",
+        "willPayload": ""
+    },
+    {
+        "id": "9622307e.747fb",
+        "type": "Stackhero-InfluxDB-v2-Server",
+        "name": "",
+        "host": "influxdb",
+        "port": "8086",
+        "tls": false
+    },
+    {
+        "id": "298c0da8.905fe2",
+        "type": "ccu-address",
+        "host": "ccu2.fritz.box",
+        "interfaceName": "BidCos-RF.",
+        "name": "CCU2"
+    },
+    {
+        "id": "1965fe9.6ff4301",
+        "type": "homematic-device",
+        "channel": "PEQ0412823:2",
+        "name": "Schalter mit Leistungsmessung"
+    },
+    {
+        "id": "6d5c5bb4.f5d464",
+        "type": "http in",
+        "z": "d3517f1c.2c76b",
+        "name": "Feinstaub",
+        "url": "feinstaub",
+        "method": "post",
+        "upload": true,
+        "swaggerDoc": "",
+        "x": 120,
+        "y": 140,
+        "wires": [
+            [
+                "abdb05ea.d598e8",
+                "3cc731f5.43524e"
+            ]
+        ]
+    },
+    {
+        "id": "abdb05ea.d598e8",
+        "type": "debug",
+        "z": "d3517f1c.2c76b",
+        "name": "",
+        "active": false,
+        "console": "false",
+        "complete": "true",
+        "x": 310,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "3cc731f5.43524e",
+        "type": "function",
+        "z": "d3517f1c.2c76b",
+        "name": "Parse Sensor",
+        "func": "var fields = {}\nvar tags = {}\n\n\nObject.entries(msg.payload.sensordatavalues).forEach(\n    ([index, field]) => {\n        fields[field[\"value_type\"].charAt(0).toUpperCase() + field[\"value_type\"].slice(1)] = parseFloat( field[\"value\"] )\n    }\n)\n\ntags[\"floor\"] = \"outside\"\ntags[\"room\"] = \"carport\"\n\nmsg.payload.Time = Date()\ndelete fields[\"Interval\"]\ndelete fields[\"Samples\"]\n\n\nmsg.payload = { fields: fields, tags: tags, Time: msg.payload.Time }\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 357,
+        "y": 69,
+        "wires": [
+            [
+                "39350b5d.19b474",
+                "2eba47cf.3f91c8",
+                "b4baeaa9.3ecdf8"
+            ]
+        ]
+    },
+    {
+        "id": "39350b5d.19b474",
+        "type": "mqtt out",
+        "z": "d3517f1c.2c76b",
+        "name": "PM2.5",
+        "topic": "/places/our place/outside/PM2.5",
+        "qos": "",
+        "retain": "true",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "33c7c8f6.431648",
+        "x": 527,
+        "y": 74,
+        "wires": []
+    },
+    {
+        "id": "6faeb6d5.496e58",
+        "type": "mqtt out",
+        "z": "d3517f1c.2c76b",
+        "name": "PM10",
+        "topic": "/places/our place/outside/PM10",
+        "qos": "",
+        "retain": "true",
+        "broker": "33c7c8f6.431648",
+        "x": 530,
+        "y": 120,
+        "wires": []
+    },
+    {
+        "id": "b4baeaa9.3ecdf8",
+        "type": "function",
+        "z": "d3517f1c.2c76b",
+        "name": "Field/Tag/Time to influx 2.0",
+        "func": "var newPayload = {}\nnewPayload.bucket = 'test'\nnewPayload.precision = 'ms'\nnewPayload.data = []\n\nvar point = {}\npoint.measurement = 'Environment'\n\npoint.tags = msg.payload.tags\npoint.fields = msg.payload.fields\nif (msg.payload.Time) {\npoint.timestamp = Date.parse(msg.payload.Time)\n}\n\nnewPayload.data.push(point)\n\nmsg.payload = newPayload\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 480,
+        "y": 200,
+        "wires": [
+            [
+                "68372773.819978",
+                "2eba47cf.3f91c8"
+            ]
+        ]
+    },
+    {
+        "id": "2eba47cf.3f91c8",
+        "type": "debug",
+        "z": "d3517f1c.2c76b",
+        "name": "",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 740,
+        "y": 240,
+        "wires": []
+    },
+    {
+        "id": "68372773.819978",
+        "type": "link out",
+        "z": "d3517f1c.2c76b",
+        "name": "",
+        "mode": "link",
+        "links": [
+            "dfe24f21.f5ae"
+        ],
+        "x": 815,
+        "y": 60,
+        "wires": []
+    },
+    {
+        "id": "eff04fdd.4a04c",
+        "type": "mqtt in",
+        "z": "9e0450e.08f5db",
+        "name": "Tasmota sensor telemetry",
+        "topic": "/places/ourplace/+/+/+/tele/SENSOR",
+        "qos": "0",
+        "datatype": "auto",
+        "broker": "33c7c8f6.431648",
+        "inputs": 0,
+        "x": 130,
+        "y": 40,
+        "wires": [
+            [
+                "750a8c14.0550c4"
+            ]
+        ]
+    },
+    {
+        "id": "750a8c14.0550c4",
+        "type": "json",
+        "z": "9e0450e.08f5db",
+        "name": "",
+        "pretty": true,
+        "x": 270,
+        "y": 100,
+        "wires": [
+            [
+                "567c974a.8aa958",
+                "c124464.054e6b8"
+            ]
+        ]
+    },
+    {
+        "id": "567c974a.8aa958",
+        "type": "function",
+        "z": "9e0450e.08f5db",
+        "name": "Field/Tag/Time to influx 2.0",
+        "func": "var fields = {}\nvar tags = {}\n/*var newPayload = {}\nnewPayload.bucket = 'test'\nnewPayload.precision = 'ms'\nnewPayload.data = []\nvar point = {}\n\npoint.measurement = 'test_Energy'*/\n\nObject.entries(msg.payload.ENERGY).forEach(([key, value]) => {fields[key] = value})\n\nlet semanticTopic = msg.topic.split(\"/\")\ntags[\"floor\"] = semanticTopic[3]\ntags[\"room\"] = semanticTopic[4]\ntags[\"appliance\"] = semanticTopic[5]\ntags[\"meter\"] = \"EG\"\n\ndelete fields.TotalStartTime/*\n//delete fields.Total\n//delete fields.Yesterday\n//delete fields.Today\ndelete fields.Period\n//delete fields.Power\ndelete fields.ApparentPower\ndelete fields.ReactivePower\ndelete fields.Factor\n//delete fields.Voltage\n//delete fields.Current*/\n\n/*point.tags = tags\npoint.fields = fields\npoint.timestamp = Date.parse(msg.payload.Time.concat('+01:00'))\nnewPayload.data.push(point)*/\n\nmsg.payload = { fields: fields, tags: tags, Time: msg.payload.Time }\nreturn msg;\nmsg.payload = {\n  // You bucket\n  // Optional (it can be defined in the node credentials settings)\n  bucket: \"test\",\n\n  // Precision of timestamp\n  // Optional\n  // Can be `ns` (nanoseconds),\n  //        `us` (microseconds),\n  //        `ms` (milliseconds),\n  //        `s` (seconds).\n  // The default is `ns`\n  precision: 'ms',\n\n  // Data to send to InfluxDB\n  // Can be an array of objects or only one object\n  data: [\n    {\n      measurement: 'machinerySensor',\n\n      tags: {\n        deviceId: 'gyh43',\n        hardwareVersion: '1.0.2',\n        softwareVersion: '2.5.1',\n        location: 'factory-1'\n      },\n\n      fields: {\n        temperature: 12 * Math.random(),\n        humidity: 46,\n        vibrations: 18,\n        batteryVoltage: 3.6\n      },\n\n      timestamp: Date.now()\n    },\n\n    // More data can be send here, simply re add an object\n    // { ... },\n  ]\n};\n\nreturn msg;",
+        "outputs": "1",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 450,
+        "y": 100,
+        "wires": [
+            [
+                "35a493cd.06bbec"
+            ]
+        ]
+    },
+    {
+        "id": "c124464.054e6b8",
+        "type": "debug",
+        "z": "9e0450e.08f5db",
+        "name": "",
+        "active": false,
+        "console": "false",
+        "complete": "true",
+        "x": 350,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "35a493cd.06bbec",
+        "type": "function",
+        "z": "9e0450e.08f5db",
+        "name": "Field/Tag/Time to influx 2.0",
+        "func": "var newPayload = {}\nnewPayload.bucket = 'test'\nnewPayload.precision = 'ms'\nnewPayload.data = []\n\nvar point = {}\npoint.measurement = 'test_Energy'\n\npoint.tags = msg.payload.tags\npoint.fields = msg.payload.fields\nif (msg.payload.Time) {\npoint.timestamp = Date.parse(msg.payload.Time)\n}\n\nnewPayload.data.push(point)\n\nmsg.payload = newPayload\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 680,
+        "y": 160,
+        "wires": [
+            [
+                "beca897a.df2538",
+                "830bc7d5.c3e668"
+            ]
+        ]
+    },
+    {
+        "id": "dfe24f21.f5ae",
+        "type": "link in",
+        "z": "9e0450e.08f5db",
+        "name": "",
+        "links": [
+            "1aa4be52.f1c9e2",
+            "3b58f2ab.d527be",
+            "e33f1b6e.a9ecf8",
+            "81bcdb89.c67128",
+            "944e0cfd.f7d36",
+            "68372773.819978"
+        ],
+        "x": 675,
+        "y": 40,
+        "wires": [
+            [
+                "beca897a.df2538",
+                "830bc7d5.c3e668",
+                "4a1fb45af72bfef6"
+            ]
+        ]
+    },
+    {
+        "id": "830bc7d5.c3e668",
+        "type": "debug",
+        "z": "9e0450e.08f5db",
+        "name": "",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 850,
+        "y": 240,
+        "wires": []
+    },
+    {
+        "id": "beca897a.df2538",
+        "type": "Stackhero-InfluxDB-v2-write",
+        "z": "9e0450e.08f5db",
+        "server": "9622307e.747fb",
+        "name": "Influx",
+        "x": 1150,
+        "y": 100,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "4a1fb45af72bfef6",
+        "type": "debug",
+        "z": "9e0450e.08f5db",
+        "name": "debug 1",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1140,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "b59b3069.79fc1",
+        "type": "function",
+        "z": "2ee36d67.e60452",
+        "name": "Parse water",
+        "func": "var fields = {}\nvar tags = {}\n\n\nvar type = msg.payload.WATER.Type\nvar key = type.charAt(0).toUpperCase() + type.substring(1).toLowerCase()\nfields[key] = parseFloat( msg.payload.WATER.Total )\n\nlet semanticTopic = msg.topic.split(\"/\")\ntags[\"floor\"] = semanticTopic[3]\ntags[\"meter\"] = \"EG\"\n\n\nmsg.payload = { \n    fields: fields, \n    tags: tags, \n    Time: msg.payload.Time \n}\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 330,
+        "y": 140,
+        "wires": [
+            [
+                "e405ed01.51c75",
+                "8ae592fc02a44ada"
+            ]
+        ]
+    },
+    {
+        "id": "c56c36de.192b78",
+        "type": "mqtt in",
+        "z": "2ee36d67.e60452",
+        "name": "Water",
+        "topic": "/places/our place/groundfloor/water/#",
+        "qos": "2",
+        "datatype": "auto",
+        "broker": "33c7c8f6.431648",
+        "inputs": 0,
+        "x": 70,
+        "y": 80,
+        "wires": [
+            [
+                "aadc82d7.b2c53"
+            ]
+        ]
+    },
+    {
+        "id": "aadc82d7.b2c53",
+        "type": "json",
+        "z": "2ee36d67.e60452",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 140,
+        "y": 160,
+        "wires": [
+            [
+                "b59b3069.79fc1"
+            ]
+        ]
+    },
+    {
+        "id": "e405ed01.51c75",
+        "type": "debug",
+        "z": "2ee36d67.e60452",
+        "name": "",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 810,
+        "y": 20,
+        "wires": []
+    },
+    {
+        "id": "1aa4be52.f1c9e2",
+        "type": "link out",
+        "z": "2ee36d67.e60452",
+        "name": "",
+        "links": [
+            "dfe24f21.f5ae"
+        ],
+        "x": 765,
+        "y": 80,
+        "wires": []
+    },
+    {
+        "id": "133f248c.50989b",
+        "type": "mqtt in",
+        "z": "2ee36d67.e60452",
+        "name": "Boiler",
+        "topic": "/places/our place/cellar/heatingroom/boiler/#",
+        "qos": "2",
+        "datatype": "auto",
+        "broker": "33c7c8f6.431648",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 90,
+        "y": 260,
+        "wires": [
+            [
+                "5fcc7281.61508c"
+            ]
+        ]
+    },
+    {
+        "id": "9182119e.e8ca2",
+        "type": "debug",
+        "z": "2ee36d67.e60452",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 810,
+        "y": 220,
+        "wires": []
+    },
+    {
+        "id": "5fcc7281.61508c",
+        "type": "function",
+        "z": "2ee36d67.e60452",
+        "name": "Parse Sensor",
+        "func": "var fields = {}\nvar tags = {}\n\n\nlet semanticTopic = msg.topic.split(\"/\")\ntags[\"floor\"] = semanticTopic[3]\ntags[\"room\"] = semanticTopic[4]\ntags[\"appliance\"] = semanticTopic[5]\n\nvar key = semanticTopic[6].split(' ')[0]\n\n\n\nfields[key.charAt(0).toUpperCase() + key.slice(1)] = parseFloat( msg.payload )\n\nvar time = new Date()\n\n\n\nmsg.payload = { fields: fields, tags: tags, Time: time }\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 330,
+        "y": 260,
+        "wires": [
+            [
+                "b1322c96.17021"
+            ]
+        ]
+    },
+    {
+        "id": "b1322c96.17021",
+        "type": "function",
+        "z": "2ee36d67.e60452",
+        "name": "Homematic to Influx",
+        "func": "var newPayload = {}\nnewPayload.bucket = 'test'\nnewPayload.precision = 'ms'\nnewPayload.data = []\n\nvar point = {}\npoint.measurement = 'Heating'\n\npoint.tags = msg.payload.tags\npoint.fields = msg.payload.fields\nif (msg.payload.Time) {\npoint.timestamp = Date.parse(msg.payload.Time)\n}\n\nnewPayload.data.push(point)\n\nmsg.payload = newPayload\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 560,
+        "y": 260,
+        "wires": [
+            [
+                "9182119e.e8ca2",
+                "1aa4be52.f1c9e2"
+            ]
+        ]
+    },
+    {
+        "id": "69628bd65fad2d64",
+        "type": "function",
+        "z": "2ee36d67.e60452",
+        "name": "Homematic to Influx",
+        "func": "var newPayload = {}\nnewPayload.bucket = 'test'\nnewPayload.precision = 'ms'\nnewPayload.data = []\n\nvar point = {}\npoint.measurement = 'Heating'\n\npoint.tags = msg.payload.tags\npoint.fields = msg.payload.fields\nif (msg.payload.Time) {\npoint.timestamp = Date.parse(msg.payload.Time)\n}\n\nnewPayload.data.push(point)\n\nmsg.payload = newPayload\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 560,
+        "y": 260,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "8ae592fc02a44ada",
+        "type": "function",
+        "z": "2ee36d67.e60452",
+        "name": "Water to Influx",
+        "func": "var newPayload = {}\nnewPayload.bucket = 'test'\nnewPayload.precision = 'ms'\nnewPayload.data = []\n\nvar point = {}\npoint.measurement = 'Water'\n\npoint.tags = msg.payload.tags\npoint.fields = msg.payload.fields\nif (msg.payload.Time) {\npoint.timestamp = Date.parse(msg.payload.Time)\n}\n\nnewPayload.data.push(point)\n\nmsg.payload = newPayload\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 540,
+        "y": 180,
+        "wires": [
+            [
+                "1aa4be52.f1c9e2"
+            ]
+        ]
+    },
+    {
+        "id": "f27b6447056da059",
+        "type": "mqtt in",
+        "z": "2ee36d67.e60452",
+        "name": "Heating",
+        "topic": "/places/our place/cellar/heatingroom/heating/#",
+        "qos": "2",
+        "datatype": "auto",
+        "broker": "33c7c8f6.431648",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 90,
+        "y": 340,
+        "wires": [
+            [
+                "5fcc7281.61508c",
+                "577acc68c8aef9a2"
+            ]
+        ]
+    },
+    {
+        "id": "577acc68c8aef9a2",
+        "type": "debug",
+        "z": "2ee36d67.e60452",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 260,
+        "y": 340,
+        "wires": []
+    },
+    {
+        "id": "9c214a75.c56ce8",
+        "type": "inject",
+        "z": "a74590ad.2ff13",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "30",
+        "crontab": "",
+        "once": false,
+        "onceDelay": "",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 110,
+        "y": 280,
+        "wires": [
+            [
+                "32fd45f4.6369ca",
+                "46cd2a09.4c22a4"
+            ]
+        ]
+    },
+    {
+        "id": "dea536e1.143718",
+        "type": "http request",
+        "z": "a74590ad.2ff13",
+        "name": "",
+        "method": "use",
+        "ret": "txt",
+        "paytoqs": "ignore",
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "authType": "",
+        "x": 245,
+        "y": 57,
+        "wires": [
+            [
+                "e703933d.085a6"
+            ]
+        ]
+    },
+    {
+        "id": "2ac9f36.86f350c",
+        "type": "split",
+        "z": "a74590ad.2ff13",
+        "name": "",
+        "splt": "<xml>",
+        "spltType": "str",
+        "arraySplt": 1,
+        "arraySpltType": "len",
+        "stream": false,
+        "addname": "",
+        "x": 313,
+        "y": 217,
+        "wires": [
+            [
+                "9684bfa6.33cc9"
+            ]
+        ]
+    },
+    {
+        "id": "9684bfa6.33cc9",
+        "type": "switch",
+        "z": "a74590ad.2ff13",
+        "name": "",
+        "property": "parts.index",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "0",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "1",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "outputs": 2,
+        "x": 508,
+        "y": 184,
+        "wires": [
+            [
+                "55aa51dd.35a7f"
+            ],
+            [
+                "ac08b270.95a8f"
+            ]
+        ]
+    },
+    {
+        "id": "ac08b270.95a8f",
+        "type": "change",
+        "z": "a74590ad.2ff13",
+        "name": "Create XML",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "'<xml>' & msg.payload",
+                "tot": "jsonata"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 450,
+        "y": 301,
+        "wires": [
+            [
+                "6d6918b0.5ca708"
+            ]
+        ]
+    },
+    {
+        "id": "6d6918b0.5ca708",
+        "type": "xml",
+        "z": "a74590ad.2ff13",
+        "name": "",
+        "attr": "",
+        "chr": "",
+        "x": 602,
+        "y": 382,
+        "wires": [
+            [
+                "947264aa.92eb48"
+            ]
+        ]
+    },
+    {
+        "id": "947264aa.92eb48",
+        "type": "change",
+        "z": "a74590ad.2ff13",
+        "name": "",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "$lowercase($substringAfter(msg.payload.xml.d[0], ':2.'))",
+                "tot": "jsonata"
+            },
+            {
+                "t": "set",
+                "p": "topic",
+                "pt": "msg",
+                "to": "key",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 655,
+        "y": 277,
+        "wires": [
+            [
+                "2f9dc1ad.dde43e"
+            ]
+        ]
+    },
+    {
+        "id": "2f9dc1ad.dde43e",
+        "type": "join",
+        "z": "a74590ad.2ff13",
+        "name": "",
+        "mode": "custom",
+        "build": "object",
+        "property": "payload",
+        "propertyType": "msg",
+        "key": "topic",
+        "joiner": "\\n",
+        "joinerType": "str",
+        "accumulate": false,
+        "timeout": "",
+        "count": "2",
+        "x": 799,
+        "y": 228,
+        "wires": [
+            [
+                "2cde50ae.a71d5"
+            ]
+        ]
+    },
+    {
+        "id": "55aa51dd.35a7f",
+        "type": "change",
+        "z": "a74590ad.2ff13",
+        "name": "",
+        "rules": [
+            {
+                "t": "set",
+                "p": "topic",
+                "pt": "msg",
+                "to": "value",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 609,
+        "y": 92,
+        "wires": [
+            [
+                "2f9dc1ad.dde43e"
+            ]
+        ]
+    },
+    {
+        "id": "2cde50ae.a71d5",
+        "type": "function",
+        "z": "a74590ad.2ff13",
+        "name": "Homematic to Influx",
+        "func": "let fields = {}\nlet tags = {}\n\nmsg.measurement = \"test_Energy\"\n\nlet key = msg.payload.key\nkey = key.charAt(0).toUpperCase() + key.slice(1)\n\nif (key == \"Current\" || key == \"Total\") {\n    msg.payload.value = msg.payload.value / 1000.0\n}\nfields[key] = parseFloat(msg.payload.value)\n\ntags[\"floor\"] = \"basement\"\ntags[\"room\"] = \"bathroom\"\ntags[\"appliance\"] = \"washingmachine\"\ntags[\"meter\"] = \"EG\"\n\n\nmsg.payload = { \n    bucket: \"test\", \n    precision: \"ms\", \n    data: [{ fields: fields, tags: tags, measurement: msg.measurement }]\n}\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 640,
+        "y": 40,
+        "wires": [
+            [
+                "3b58f2ab.d527be",
+                "bb360a07.21b778"
+            ]
+        ]
+    },
+    {
+        "id": "e703933d.085a6",
+        "type": "change",
+        "z": "a74590ad.2ff13",
+        "name": "Remove HTTP fields",
+        "rules": [
+            {
+                "t": "delete",
+                "p": "headers",
+                "pt": "msg"
+            },
+            {
+                "t": "delete",
+                "p": "url",
+                "pt": "msg"
+            },
+            {
+                "t": "delete",
+                "p": "statusCode",
+                "pt": "msg"
+            },
+            {
+                "t": "delete",
+                "p": "responseUrl",
+                "pt": "msg"
+            },
+            {
+                "t": "delete",
+                "p": "method",
+                "pt": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 380,
+        "y": 120,
+        "wires": [
+            [
+                "2ac9f36.86f350c"
+            ]
+        ]
+    },
+    {
+        "id": "89d31684.938e68",
+        "type": "delay",
+        "z": "a74590ad.2ff13",
+        "name": "",
+        "pauseType": "delay",
+        "timeout": "5",
+        "timeoutUnits": "seconds",
+        "rate": "1",
+        "nbRateUnits": "1",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "outputs": 1,
+        "x": 145,
+        "y": 128,
+        "wires": [
+            [
+                "dea536e1.143718"
+            ]
+        ]
+    },
+    {
+        "id": "3b58f2ab.d527be",
+        "type": "link out",
+        "z": "a74590ad.2ff13",
+        "name": "",
+        "links": [
+            "dfe24f21.f5ae"
+        ],
+        "x": 805,
+        "y": 60,
+        "wires": []
+    },
+    {
+        "id": "bb360a07.21b778",
+        "type": "debug",
+        "z": "a74590ad.2ff13",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 830,
+        "y": 120,
+        "wires": []
+    },
+    {
+        "id": "84eff76d.25c108",
+        "type": "debug",
+        "z": "a74590ad.2ff13",
+        "name": "",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 450,
+        "y": 480,
+        "wires": []
+    },
+    {
+        "id": "83ee1671.1d66b8",
+        "type": "mqtt in",
+        "z": "a74590ad.2ff13",
+        "name": "Total",
+        "topic": "/places/our place/basement/bathroom/washingmachine/Total",
+        "qos": "2",
+        "datatype": "auto",
+        "broker": "33c7c8f6.431648",
+        "inputs": 0,
+        "x": 110,
+        "y": 360,
+        "wires": [
+            [
+                "aa4ef74f.373278"
+            ]
+        ]
+    },
+    {
+        "id": "aa4ef74f.373278",
+        "type": "function",
+        "z": "a74590ad.2ff13",
+        "name": "Map MQTT to Total",
+        "func": "var _payload = msg.payload\nmsg.payload = {}\nmsg.payload.key = \"Total\"\nmsg.payload.value = _payload\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 320,
+        "y": 360,
+        "wires": [
+            [
+                "84eff76d.25c108",
+                "2cde50ae.a71d5"
+            ]
+        ]
+    },
+    {
+        "id": "32fd45f4.6369ca",
+        "type": "homematic",
+        "z": "a74590ad.2ff13",
+        "ccu": "298c0da8.905fe2",
+        "device": "1965fe9.6ff4301",
+        "function": "getValue",
+        "attribute": "POWER",
+        "value": "",
+        "nodeName": "Power",
+        "x": 50,
+        "y": 60,
+        "wires": [
+            [
+                "dea536e1.143718"
+            ]
+        ]
+    },
+    {
+        "id": "46cd2a09.4c22a4",
+        "type": "homematic",
+        "z": "a74590ad.2ff13",
+        "ccu": "298c0da8.905fe2",
+        "device": "1965fe9.6ff4301",
+        "function": "getValue",
+        "attribute": "CURRENT",
+        "value": "",
+        "nodeName": "Current",
+        "x": 120,
+        "y": 180,
+        "wires": [
+            [
+                "89d31684.938e68"
+            ]
+        ]
+    },
+    {
+        "id": "6853f338.3d1f9c",
+        "type": "mqtt in",
+        "z": "5088004e.29a93",
+        "name": "emonhub JSON",
+        "topic": "emon/#",
+        "qos": "2",
+        "datatype": "auto",
+        "broker": "33c7c8f6.431648",
+        "inputs": 0,
+        "x": 80,
+        "y": 180,
+        "wires": [
+            [
+                "7b1f0162.e03a2"
+            ]
+        ]
+    },
+    {
+        "id": "a2613bf6.083c68",
+        "type": "function",
+        "z": "5088004e.29a93",
+        "name": "Parse emonhub JSON",
+        "func": "const mapping = {\n    \"9\": {\n        \"tags\": {\n            \"meter\": \"House\",\n            \"floor\": \"common\",\n        }\n        \n    },\n    \"2\": {\n \n        \"tags\": {\n            \"meter\": \"EG\",\n            \"floor\": \"groundfloor\"\n        }\n        \n    },\n    \"4\": {\n        \"tags\": {\n            \"meter\": \"DG\",\n            \"floor\": \"firstfloor\"\n        }\n        \n    },\n    \"3\": {\n        \"tags\": {\n            \"meter\": \"Main\",\n            \"floor\": \"total\"\n        }\n        \n    }\n}\n\nvar fields = {}\nvar tags = {}\n\n\nObject.entries(msg.payload).forEach(\n    ([key, value]) => {\n        if (key == 'power')\n          value = value * 1000\n        fields[key.charAt(0).toUpperCase() + key.slice(1)] = parseFloat( value )\n    }\n)\n\nlet semanticTopic = msg.topic.split(\"/\")\nvar map = mapping[semanticTopic[1].toString()]\n\nmsg.payload.Time = new Date(fields.Time)\ndelete fields[\"Time\"]\n\n\nmsg.payload = { fields: fields, tags: map.tags, Time: msg.payload.Time }\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 340,
+        "y": 180,
+        "wires": [
+            [
+                "3462d9db.04bcf6",
+                "2b32881c.27ad28"
+            ]
+        ]
+    },
+    {
+        "id": "7b1f0162.e03a2",
+        "type": "json",
+        "z": "5088004e.29a93",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 190,
+        "y": 120,
+        "wires": [
+            [
+                "a2613bf6.083c68"
+            ]
+        ]
+    },
+    {
+        "id": "3462d9db.04bcf6",
+        "type": "function",
+        "z": "5088004e.29a93",
+        "name": "Field/Tag/Time to influx 2.0",
+        "func": "var newPayload = {}\nnewPayload.bucket = 'test'\nnewPayload.precision = 'ms'\nnewPayload.data = []\n\nvar point = {}\npoint.measurement = 'test_Energy'\n\npoint.tags = msg.payload.tags\npoint.fields = {}\nfor (const [key, value] of Object.entries(msg.payload.fields)) {\n    point.fields[key.replace(' ', '_')] = value\n}\n\nif (msg.payload.Time) {\n    point.timestamp = Date.parse(msg.payload.Time)\n}\n\nnewPayload.data.push(point)\n\nmsg.payload = newPayload\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "x": 540,
+        "y": 60,
+        "wires": [
+            [
+                "996d45ac.8807f8",
+                "e33f1b6e.a9ecf8",
+                "2b32881c.27ad28"
+            ]
+        ]
+    },
+    {
+        "id": "996d45ac.8807f8",
+        "type": "function",
+        "z": "5088004e.29a93",
+        "name": "map to openhab",
+        "func": "var outmsg = []\nlet fields = msg.payload.data[0].fields\nlet tags = msg.payload.data[0].tags\n\nObject.entries(fields).forEach(([key, value]) => {\n    let msg1 = {}\n    msg1.topic = '/places/our place/' + tags.floor + '/' + key.toLowerCase()\n    msg1.payload = parseFloat(value)\n    outmsg.push(msg1)\n})\nreturn [outmsg];",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "x": 660,
+        "y": 180,
+        "wires": [
+            [
+                "cd14e2c0.693b4"
+            ]
+        ]
+    },
+    {
+        "id": "cd14e2c0.693b4",
+        "type": "mqtt out",
+        "z": "5088004e.29a93",
+        "name": "mqtt",
+        "topic": "",
+        "qos": "",
+        "retain": "",
+        "broker": "33c7c8f6.431648",
+        "x": 830,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "e33f1b6e.a9ecf8",
+        "type": "link out",
+        "z": "5088004e.29a93",
+        "name": "",
+        "links": [
+            "dfe24f21.f5ae"
+        ],
+        "x": 755,
+        "y": 60,
+        "wires": []
+    },
+    {
+        "id": "2b32881c.27ad28",
+        "type": "debug",
+        "z": "5088004e.29a93",
+        "name": "",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 720,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "4af11aa1.3e1254",
+        "type": "function",
+        "z": "15524c6f.7f30d4",
+        "name": "Field/Tag/Time to influx 2.0",
+        "func": "var newPayload = {}\nnewPayload.bucket = 'test'\nnewPayload.precision = 'ms'\nnewPayload.data = []\n\nvar point = {}\npoint.measurement = 'Environment'\n\npoint.tags = msg.payload.tags\npoint.fields = msg.payload.fields\nif (msg.payload.Time) {\npoint.timestamp = Date.parse(msg.payload.Time)\n}\n\nnewPayload.data.push(point)\n\nmsg.payload = newPayload\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 580,
+        "y": 80,
+        "wires": [
+            [
+                "3e8af64d.2410aa",
+                "944e0cfd.f7d36"
+            ]
+        ]
+    },
+    {
+        "id": "8ce52aed.0e7558",
+        "type": "mqtt in",
+        "z": "15524c6f.7f30d4",
+        "name": "Environment",
+        "topic": "/places/our place/basement/bathroom/#",
+        "qos": "2",
+        "datatype": "auto",
+        "broker": "33c7c8f6.431648",
+        "nl": false,
+        "rap": false,
+        "inputs": 0,
+        "x": 90,
+        "y": 80,
+        "wires": [
+            [
+                "43052d94.b7fdd4"
+            ]
+        ]
+    },
+    {
+        "id": "61dc381.0d03fc8",
+        "type": "function",
+        "z": "15524c6f.7f30d4",
+        "name": "Parse Sensor",
+        "func": "var fields = {}\nvar tags = {}\n\nif (msg.payload.ENVIRONMENT !== undefined) {\n\n\nObject.entries(msg.payload.ENVIRONMENT).forEach(\n    ([key, value]) => {\n        fields[key.charAt(0).toUpperCase() + key.slice(1)] = parseFloat( value )\n    }\n)\n\ntags[\"floor\"] = \"basement\"\ntags[\"room\"] = \"bathroom\"\n\nmsg.payload.Time = new Date(fields.Time)\ndelete fields[\"Time\"]\n\n\nmsg.payload = { fields: fields, tags: tags, Time: msg.payload.Time }\nreturn msg;\n}",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 340,
+        "y": 100,
+        "wires": [
+            [
+                "4af11aa1.3e1254"
+            ]
+        ]
+    },
+    {
+        "id": "43052d94.b7fdd4",
+        "type": "json",
+        "z": "15524c6f.7f30d4",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 140,
+        "y": 160,
+        "wires": [
+            [
+                "61dc381.0d03fc8",
+                "3e8af64d.2410aa"
+            ]
+        ]
+    },
+    {
+        "id": "3e8af64d.2410aa",
+        "type": "debug",
+        "z": "15524c6f.7f30d4",
+        "name": "",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 670,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "944e0cfd.f7d36",
+        "type": "link out",
+        "z": "15524c6f.7f30d4",
+        "name": "",
+        "mode": "link",
+        "links": [
+            "dfe24f21.f5ae"
+        ],
+        "x": 795,
+        "y": 80,
+        "wires": []
+    },
+    {
+        "id": "d79575ab5c68ad95",
+        "type": "debug",
+        "z": "ba6738e5872559e0",
+        "name": "",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1250,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "788c3c4e0aef3689",
+        "type": "http request",
+        "z": "ba6738e5872559e0",
+        "name": "",
+        "method": "GET",
+        "ret": "txt",
+        "paytoqs": "ignore",
+        "url": "https://api.esyoil.com/v1/calculator/city-prices",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "authType": "",
+        "senderr": false,
+        "x": 330,
+        "y": 80,
+        "wires": [
+            [
+                "7e3cbc64b2104b14"
+            ]
+        ]
+    },
+    {
+        "id": "977bd3fe8cd70a84",
+        "type": "inject",
+        "z": "ba6738e5872559e0",
+        "name": "",
+        "props": [],
+        "repeat": "",
+        "crontab": "00 01 * * *",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 130,
+        "y": 80,
+        "wires": [
+            [
+                "788c3c4e0aef3689"
+            ]
+        ]
+    },
+    {
+        "id": "7e3cbc64b2104b14",
+        "type": "json",
+        "z": "ba6738e5872559e0",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 510,
+        "y": 80,
+        "wires": [
+            [
+                "50279320d02fa2d6"
+            ]
+        ]
+    },
+    {
+        "id": "f168d7a588cd3c72",
+        "type": "function",
+        "z": "ba6738e5872559e0",
+        "name": "Parse Oilprice",
+        "func": "msg.payload = msg.payload.data[\"München\"][msg.date]\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 940,
+        "y": 80,
+        "wires": [
+            [
+                "d79575ab5c68ad95",
+                "880c053ecdcb9f89"
+            ]
+        ]
+    },
+    {
+        "id": "880c053ecdcb9f89",
+        "type": "mqtt out",
+        "z": "ba6738e5872559e0",
+        "name": "Oilprice",
+        "topic": "/places/ourplace/outside/oilprice",
+        "qos": "",
+        "retain": "true",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "33c7c8f6.431648",
+        "x": 1200,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "50279320d02fa2d6",
+        "type": "moment",
+        "z": "ba6738e5872559e0",
+        "name": "",
+        "topic": "",
+        "input": "",
+        "inputType": "date",
+        "inTz": "Europe/Berlin",
+        "adjAmount": 0,
+        "adjType": "days",
+        "adjDir": "add",
+        "format": "YYYY-MM-DD",
+        "locale": "de-DE",
+        "output": "date",
+        "outputType": "msg",
+        "outTz": "Europe/Berlin",
+        "x": 720,
+        "y": 80,
+        "wires": [
+            [
+                "f168d7a588cd3c72"
+            ]
+        ]
+    }
+]
