@@ -176,7 +176,7 @@
         "id": "b4baeaa9.3ecdf8",
         "type": "function",
         "z": "d3517f1c.2c76b",
-        "name": "Field/Tag/Time to influx 2.0",
+        "name": "Field/Tag/Time to influx 2.3",
         "func": "var newPayload = {}\nnewPayload.bucket = 'test'\nnewPayload.precision = 'ms'\nnewPayload.data = []\n\nvar point = {}\npoint.measurement = 'Environment'\n\npoint.tags = msg.payload.tags\npoint.fields = msg.payload.fields\nif (msg.payload.Time) {\npoint.timestamp = Date.parse(msg.payload.Time)\n}\n\nnewPayload.data.push(point)\n\nmsg.payload = newPayload\n\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
